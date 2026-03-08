@@ -1,9 +1,15 @@
 // frontend/src/api/payments.js
 import axios from 'axios'
 
+const headers = {}
+if (import.meta.env.VITE_API_KEY) {
+  headers['X-API-Key'] = import.meta.env.VITE_API_KEY
+}
+
 const http = axios.create({
   baseURL: import.meta.env.VITE_API_URL || 'http://localhost:8000',
   timeout: 10000,
+  headers,
 })
 
 export const createPayment   = (data)      => http.post('/api/payments', data).then(r => r.data)

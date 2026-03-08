@@ -83,16 +83,31 @@
 
       <!-- Вкладки -->
       <div class="flex rounded-ios-sm overflow-hidden" style="background: var(--bg-card); border: 1px solid var(--border)">
+        <!-- Обзор доски -->
         <button
-          v-for="tab in tabs"
-          :key="tab.key"
-          @click="activeTab = tab.key"
+          @click="activeTab = 'overview'"
           class="flex-1 py-2.5 text-sm font-semibold transition-all"
-          :style="activeTab === tab.key
-            ? 'background: var(--bg-input); color: #fff'
-            : 'color: var(--text-secondary)'"
+          :style="activeTab === 'overview' ? 'background: var(--bg-input); color: #fff' : 'color: var(--text-secondary)'"
         >
-          {{ tab.label }}
+          <span class="sm:hidden text-lg leading-none">📊</span>
+          <span class="hidden sm:inline">📊 Обзор доски</span>
+        </button>
+        <!-- Добавить платёж -->
+        <button
+          @click="activeTab = 'add'"
+          class="flex-1 py-2.5 text-sm font-semibold transition-all"
+          :style="activeTab === 'add' ? 'background: var(--bg-input); color: #fff' : 'color: var(--text-secondary)'"
+        >
+          <span class="sm:hidden text-lg leading-none">➕</span>
+          <span class="hidden sm:inline">➕ Добавить платеж</span>
+        </button>
+        <!-- Данные — только на десктопе -->
+        <button
+          @click="activeTab = 'data'"
+          class="hidden sm:block flex-1 py-2.5 text-sm font-semibold transition-all"
+          :style="activeTab === 'data' ? 'background: var(--bg-input); color: #fff' : 'color: var(--text-secondary)'"
+        >
+          📤 Данные
         </button>
       </div>
 
@@ -137,22 +152,54 @@
 
           <!-- Селекторы периода -->
           <div class="calc-row">
+            <!-- Пикер "С" -->
             <div class="calc-field">
               <label class="calc-label">С</label>
-              <select v-model="calcFrom" class="calc-select">
-                <option v-for="p in availablePeriods" :key="p.value" :value="p.value">
-                  {{ p.label }}
-                </option>
-              </select>
+              <div class="calc-picker">
+                <div class="calc-year-nav">
+                  <button class="calc-year-btn" :disabled="calcFromPickerYear <= minAvailYear" @click="calcFromPickerYear--">
+                    <svg width="12" height="12" viewBox="0 0 16 16" fill="none"><path d="M10 12L6 8L10 4" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                  </button>
+                  <span class="calc-year-label">{{ calcFromPickerYear }}</span>
+                  <button class="calc-year-btn" :disabled="calcFromPickerYear >= maxAvailYear" @click="calcFromPickerYear++">
+                    <svg width="12" height="12" viewBox="0 0 16 16" fill="none"><path d="M6 4L10 8L6 12" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                  </button>
+                </div>
+                <div class="calc-month-grid">
+                  <button
+                    v-for="(mname, mi) in MONTHS_SHORT" :key="mi"
+                    class="calc-month-btn"
+                    :disabled="isFromMonthDisabled(calcFromPickerYear, mi + 1)"
+                    :class="{ active: isFromMonthActive(calcFromPickerYear, mi + 1) }"
+                    @click="selectFrom(calcFromPickerYear, mi + 1)"
+                  >{{ mname }}</button>
+                </div>
+              </div>
             </div>
             <div class="calc-sep">—</div>
+            <!-- Пикер "По" -->
             <div class="calc-field">
               <label class="calc-label">По</label>
-              <select v-model="calcTo" class="calc-select">
-                <option v-for="p in availablePeriods" :key="p.value" :value="p.value">
-                  {{ p.label }}
-                </option>
-              </select>
+              <div class="calc-picker">
+                <div class="calc-year-nav">
+                  <button class="calc-year-btn" :disabled="calcToPickerYear <= minAvailYear" @click="calcToPickerYear--">
+                    <svg width="12" height="12" viewBox="0 0 16 16" fill="none"><path d="M10 12L6 8L10 4" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                  </button>
+                  <span class="calc-year-label">{{ calcToPickerYear }}</span>
+                  <button class="calc-year-btn" :disabled="calcToPickerYear >= maxAvailYear" @click="calcToPickerYear++">
+                    <svg width="12" height="12" viewBox="0 0 16 16" fill="none"><path d="M6 4L10 8L6 12" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                  </button>
+                </div>
+                <div class="calc-month-grid">
+                  <button
+                    v-for="(mname, mi) in MONTHS_SHORT" :key="mi"
+                    class="calc-month-btn"
+                    :disabled="isToMonthDisabled(calcToPickerYear, mi + 1)"
+                    :class="{ active: isToMonthActive(calcToPickerYear, mi + 1) }"
+                    @click="selectTo(calcToPickerYear, mi + 1)"
+                  >{{ mname }}</button>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -169,14 +216,24 @@
 
             <!-- Детализация по объектам -->
             <div v-if="calcByObject.length > 0" class="calc-objects">
-              <div
-                v-for="obj in calcByObject"
-                :key="obj.name"
-                class="calc-obj-row"
-              >
-                <span class="calc-obj-icon">{{ obj.icon }}</span>
-                <span class="calc-obj-name">{{ obj.name }}</span>
-                <span class="calc-obj-sum">{{ formatRub(obj.total) }}</span>
+              <div v-for="obj in calcByObject" :key="obj.name" class="calc-obj-group">
+                <div class="calc-obj-row" @click="toggleObject(obj.name)">
+                  <span class="calc-obj-icon">{{ obj.icon }}</span>
+                  <span class="calc-obj-name">{{ obj.name }}</span>
+                  <span class="calc-obj-sum">{{ formatRub(obj.total) }}</span>
+                  <span class="calc-obj-chevron" :class="{ expanded: expandedObjects.has(obj.name) }">
+                    <svg width="12" height="12" viewBox="0 0 16 16" fill="none">
+                      <path d="M4 6L8 10L12 6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                  </span>
+                </div>
+                <div v-if="expandedObjects.has(obj.name)" class="calc-cats">
+                  <div v-for="cat in obj.categories" :key="cat.name" class="calc-cat-row">
+                    <span class="calc-cat-dot" :style="{ background: cat.color }"></span>
+                    <span class="calc-cat-name">{{ cat.name }}</span>
+                    <span class="calc-cat-sum">{{ formatRub(cat.total) }}</span>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -216,12 +273,15 @@ function onPaymentAdded() {
 onMounted(() => store.init())
 
 // ── Калькулятор ────────────────────────────────────────────
-const showCalc = ref(false)
-const calcFrom = ref('')
-const calcTo   = ref('')
+const showCalc       = ref(false)
+const calcFrom       = ref('')
+const calcTo         = ref('')
+const calcFromPickerYear = ref(new Date().getFullYear())
+const calcToPickerYear   = ref(new Date().getFullYear())
 
-const MONTHS_FULL = ['Январь','Февраль','Март','Апрель','Май','Июнь',
-                     'Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь']
+const MONTHS_SHORT = ['Янв','Фев','Мар','Апр','Май','Июн','Июл','Авг','Сен','Окт','Ноя','Дек']
+const MONTHS_FULL  = ['Январь','Февраль','Март','Апрель','Май','Июнь',
+                      'Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь']
 
 const availablePeriods = computed(() => {
   const sorted = [...store.historyFull]
@@ -232,11 +292,52 @@ const availablePeriods = computed(() => {
   })
 })
 
+const availablePeriodsSet = computed(() => new Set(availablePeriods.value.map(p => p.value)))
+
+const minAvailYear = computed(() =>
+  availablePeriods.value.length ? parseInt(availablePeriods.value[0].value) : new Date().getFullYear()
+)
+const maxAvailYear = computed(() =>
+  availablePeriods.value.length ? parseInt(availablePeriods.value.at(-1).value) : new Date().getFullYear()
+)
+
+function pStr(year, month) {
+  return `${year}-${String(month).padStart(2, '0')}`
+}
+
+function isFromMonthDisabled(year, month) {
+  const p = pStr(year, month)
+  return !availablePeriodsSet.value.has(p) || p > calcTo.value
+}
+function isToMonthDisabled(year, month) {
+  const p = pStr(year, month)
+  return !availablePeriodsSet.value.has(p) || p < calcFrom.value
+}
+function isFromMonthActive(year, month) { return pStr(year, month) === calcFrom.value }
+function isToMonthActive(year, month)   { return pStr(year, month) === calcTo.value   }
+
+function selectFrom(year, month) {
+  const p = pStr(year, month)
+  if (!availablePeriodsSet.value.has(p) || p > calcTo.value) return
+  calcFrom.value = p
+}
+function selectTo(year, month) {
+  const p = pStr(year, month)
+  if (!availablePeriodsSet.value.has(p) || p < calcFrom.value) return
+  calcTo.value = p
+}
+
 function openCalc() {
+  const periods = availablePeriods.value
   const d = new Date()
-  calcTo.value = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
-  d.setMonth(d.getMonth() - 3)
-  calcFrom.value = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+  const todayStr = pStr(d.getFullYear(), d.getMonth() + 1)
+  const d3ago = (() => { const x = new Date(); x.setMonth(x.getMonth() - 3); return pStr(x.getFullYear(), x.getMonth() + 1) })()
+  const lastPeriod  = periods.findLast(p => p.value <= todayStr)?.value  ?? periods.at(-1)?.value ?? todayStr
+  const firstPeriod = periods.find(p => p.value >= d3ago)?.value ?? periods[0]?.value ?? d3ago
+  calcTo.value   = lastPeriod
+  calcFrom.value = firstPeriod <= lastPeriod ? firstPeriod : lastPeriod
+  calcToPickerYear.value   = parseInt(calcTo.value)
+  calcFromPickerYear.value = parseInt(calcFrom.value)
   showCalc.value = true
 }
 
@@ -259,27 +360,57 @@ const calcMonthsCount = computed(() => {
   return (ty - fy) * 12 + (tm - fm) + 1
 })
 
-// Детализация по объектам из store.payments
+const OBJECTS = [
+  { name: 'Квартира 1',    icon: '🏠' },
+  { name: 'Квартира 2',    icon: '🏢' },
+  { name: 'Загородный дом', icon: '🏡' },
+  { name: 'Пляжный домик', icon: '🏖️' },
+]
+
+const CATEGORIES = [
+  { name: 'Коммунальные',  color: '#0a84ff' },
+  { name: 'Электричество', color: '#ffd60a' },
+  { name: 'Интернет',      color: '#bf5af2' },
+  { name: 'Телевидение',   color: '#30d158' },
+  { name: 'Мусор',         color: '#636366' },
+  { name: 'Членские',      color: '#ff9f0a' },
+  { name: 'Уборка снега',  color: '#5ac8fa' },
+  { name: 'Прочее',        color: '#8e8e93' },
+]
+
+const expandedObjects = ref(new Set())
+
+function toggleObject(name) {
+  const s = new Set(expandedObjects.value)
+  s.has(name) ? s.delete(name) : s.add(name)
+  expandedObjects.value = s
+}
+
+// Детализация по объектам + категориям из store.payments
 const calcByObject = computed(() => {
   const inRange = store.payments.filter(p =>
     p.period >= calcFrom.value && p.period <= calcTo.value
   )
-  const totals = {}
+  const data = {}
   for (const p of inRange) {
     const name = p.object_name || 'Без объекта'
-    totals[name] = (totals[name] || 0) + p.amount
+    const cat  = p.category   || 'Прочее'
+    if (!data[name]) data[name] = { total: 0, cats: {} }
+    data[name].total += p.amount
+    data[name].cats[cat] = (data[name].cats[cat] || 0) + p.amount
   }
-  const OBJECTS = [
-    { name: 'Квартира 1',    icon: '🏠' },
-    { name: 'Квартира 2',    icon: '🏢' },
-    { name: 'Загородный дом', icon: '🏡' },
-    { name: 'Пляжный домик', icon: '🏖️' },
-  ]
-  return Object.entries(totals)
-    .map(([name, total]) => ({
+  return Object.entries(data)
+    .map(([name, { total, cats }]) => ({
       name,
       total,
       icon: OBJECTS.find(o => o.name === name)?.icon || '🏠',
+      categories: Object.entries(cats)
+        .map(([cname, ctotal]) => ({
+          name:  cname,
+          total: ctotal,
+          color: CATEGORIES.find(c => c.name === cname)?.color || '#8e8e93',
+        }))
+        .sort((a, b) => b.total - a.total),
     }))
     .sort((a, b) => b.total - a.total)
 })
@@ -358,14 +489,52 @@ function monthsWord(n) {
   margin-bottom: 24px;
 }
 .calc-field { flex: 1; display: flex; flex-direction: column; gap: 6px; }
-.calc-label { font-size: 11px; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; letter-spacing: .5px; }
-.calc-select {
-  width: 100%; padding: 10px 12px;
-  background: var(--bg-input); border: 1px solid var(--border);
-  border-radius: 10px; color: var(--text-primary);
-  font-size: 15px; font-family: inherit;
-  appearance: none; cursor: pointer;
+.calc-label { font-size: 11px; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; letter-spacing: .5px; text-align: center; }
+
+/* Пикер год + сетка месяцев */
+.calc-picker {
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
 }
+.calc-year-nav {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 5px 4px;
+  border-bottom: 1px solid var(--border);
+}
+.calc-year-btn {
+  width: 26px; height: 26px; flex-shrink: 0;
+  border: none; background: transparent;
+  color: var(--text-secondary); cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 6px; transition: background .15s, color .15s;
+}
+.calc-year-btn:hover:not(:disabled) { background: var(--border); color: #fff; }
+.calc-year-btn:disabled { opacity: 0.25; cursor: default; }
+.calc-year-label {
+  font-size: 14px; font-weight: 700; color: var(--text-primary);
+}
+.calc-month-grid {
+  display: grid; grid-template-columns: repeat(3, 1fr);
+  gap: 2px; padding: 4px;
+}
+.calc-month-btn {
+  padding: 7px 2px;
+  border: none; background: transparent;
+  color: var(--text-secondary);
+  font-size: 12px; font-weight: 500;
+  border-radius: 6px; cursor: pointer;
+  transition: background .15s, color .15s;
+  font-family: inherit;
+}
+.calc-month-btn:hover:not(:disabled):not(.active) { background: var(--border); color: #fff; }
+.calc-month-btn:disabled { opacity: 0.2; cursor: default; }
+.calc-month-btn.active {
+  background: var(--accent-green); color: #000;
+  font-weight: 700;
+}
+
 .calc-sep {
   font-size: 18px; color: var(--text-secondary);
   padding-top: 22px;
@@ -403,6 +572,10 @@ function monthsWord(n) {
   flex-direction: column;
   gap: 8px;
 }
+.calc-obj-group {
+  display: flex;
+  flex-direction: column;
+}
 .calc-obj-row {
   display: flex;
   align-items: center;
@@ -421,6 +594,49 @@ function monthsWord(n) {
 .calc-obj-sum {
   font-size: 14px;
   font-weight: 700;
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+}
+.calc-obj-chevron {
+  color: var(--text-secondary);
+  transition: transform .2s;
+  flex-shrink: 0;
+}
+.calc-obj-chevron.expanded {
+  transform: rotate(180deg);
+}
+.calc-obj-row {
+  cursor: pointer;
+}
+.calc-obj-row:hover .calc-obj-name {
+  color: var(--text-primary);
+}
+
+/* Категории под объектом */
+.calc-cats {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 4px 0 4px 26px;
+}
+.calc-cat-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.calc-cat-dot {
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.calc-cat-name {
+  flex: 1;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+.calc-cat-sum {
+  font-size: 12px;
+  font-weight: 600;
   color: var(--text-primary);
   font-variant-numeric: tabular-nums;
 }

@@ -1,10 +1,18 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Depends, Header
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
+import os
 
 from .database import connect_db, close_db
 from .models import PaymentCreate, PaymentUpdate
 from . import crud
+
+_API_KEY = os.getenv("API_KEY")
+
+
+async def verify_api_key(x_api_key: str | None = Header(default=None)):
+    if _API_KEY and x_api_key != _API_KEY:
+        raise HTTPException(status_code=403, detail="Invalid API key")
 
 
 @asynccontextmanager
@@ -14,14 +22,18 @@ async def lifespan(app: FastAPI):
     await close_db()
 
 
-app = FastAPI(title="Kommunalka API", lifespan=lifespan)
+app = FastAPI(title="Kommunalka API", lifespan=lifespan, dependencies=[Depends(verify_api_key)])
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=False,   # must be False when allow_origins=["*"]
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_origins=[
+        "https://imod1n.github.io",
+        "http://localhost:5173",
+        "http://localhost:4173",
+    ],
+    allow_credentials=False,
+    allow_methods=["GET", "POST", "PUT", "DELETE"],
+    allow_headers=["Content-Type", "Authorization", "X-API-Key"],
 )
 
 
