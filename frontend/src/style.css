@@ -1,0 +1,96 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --bg-primary: #111111;
+  --bg-secondary: #1c1c1e;
+  --bg-card: #2c2c2e;
+  --bg-input: #3a3a3c;
+  --text-primary: #ffffff;
+  --text-secondary: #8e8e93;
+  --accent-green: #30d158;
+  --accent-blue: #0a84ff;
+  --accent-orange: #ff9f0a;
+  --accent-red: #ff453a;
+  --border: #38383a;
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+* {
+  -webkit-tap-highlight-color: transparent;
+  box-sizing: border-box;
+}
+
+html, body {
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', sans-serif;
+  overscroll-behavior: none;
+  -webkit-font-smoothing: antialiased;
+}
+
+#app {
+  min-height: 100dvh;
+  background: var(--bg-primary);
+}
+
+/* iOS-style scrollbar */
+::-webkit-scrollbar { width: 0; background: transparent; }
+
+/* iOS bounce scroll */
+.scroll-container {
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Анимации */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(24px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes pulse-green {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(48, 209, 88, 0.4); }
+  50% { box-shadow: 0 0 0 8px rgba(48, 209, 88, 0); }
+}
+
+.fade-in { animation: fadeIn 0.3s ease forwards; }
+.slide-up { animation: slideUp 0.4s ease forwards; }
+
+/* iOS-style buttons */
+.btn-ios {
+  @apply rounded-ios-sm font-semibold text-base transition-all duration-150;
+  min-height: 48px;
+}
+
+.btn-ios:active {
+  transform: scale(0.97);
+  opacity: 0.85;
+}
+
+/* Card */
+.card {
+  @apply rounded-ios p-4;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+}
+
+/* Input iOS */
+.input-ios {
+  @apply rounded-ios-sm w-full px-4 py-3 text-white outline-none transition-all;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  font-size: 16px; /* prevent zoom on iOS */
+  min-height: 48px;
+}
+
+.input-ios:focus {
+  border-color: var(--accent-blue);
+  box-shadow: 0 0 0 3px rgba(10, 132, 255, 0.2);
+}
