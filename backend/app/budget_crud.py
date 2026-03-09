@@ -221,6 +221,39 @@ async def create_period(user_id: str, start_date: str) -> dict:
     return _fmt_period(new_doc)
 
 
+async def delete_period(user_id: str, period_id: str) -> dict | None:
+    """Delete the active period and reactivate the previous one. Returns restored period."""
+    periods   = get_collection("budget_periods")
+    balances  = get_collection("budget_balances")
+    income    = get_collection("budget_income")
+    transfers = get_collection("budget_transfers")
+
+    period = await periods.find_one({"_id": ObjectId(period_id), "user_id": user_id})
+    if not period:
+        return None
+
+    # Delete all data for this period
+    await balances.delete_many({"user_id": user_id, "period_id": period_id})
+    await income.delete_many({"user_id": user_id, "period_id": period_id})
+    await transfers.delete_many({"user_id": user_id, "period_id": period_id})
+    await periods.delete_one({"_id": ObjectId(period_id)})
+
+    # Restore previous period as active
+    prev = await periods.find_one(
+        {"user_id": user_id},
+        sort=[("start_date", -1)],
+    )
+    if prev:
+        await periods.update_one(
+            {"_id": prev["_id"]},
+            {"$set": {"is_active": True, "end_date": None}},
+        )
+        prev["is_active"] = True
+        prev["end_date"]  = None
+        return _fmt_period(prev)
+    return None
+
+
 # ── Balances ──────────────────────────────────────────────────────────────────
 
 def _fmt_balance(doc: dict) -> dict:

@@ -29,8 +29,9 @@ export const updateAccount  = (uid, id, body) => http.put(`/api/budget/${uid}/ac
 export const deleteAccount  = (uid, id) => http.delete(`/api/budget/${uid}/accounts/${id}`).then(d)
 
 // ── Periods ───────────────────────────────────────────────────────────────────
-export const getPeriods     = uid       => http.get(`/api/budget/${uid}/periods`).then(d)
+export const getPeriods     = uid           => http.get(`/api/budget/${uid}/periods`).then(d)
 export const createPeriod   = (uid, start_date) => http.post(`/api/budget/${uid}/periods`, { start_date }).then(d)
+export const deletePeriod   = (uid, pid)    => http.delete(`/api/budget/${uid}/periods/${pid}`).then(d)
 
 // ── Balances ──────────────────────────────────────────────────────────────────
 export const getBalances    = (uid, pid)       => http.get(`/api/budget/${uid}/periods/${pid}/balances`).then(d)

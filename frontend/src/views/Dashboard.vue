@@ -1,6 +1,9 @@
 <template>
   <div class="pb-safe">
 
+    <!-- Блокировка бюджета — поверх всего, как PinLock -->
+    <BudgetLock v-if="activeTab === 'budget' && budgetLocked" @unlocked="budgetLocked = false" @back="activeTab = 'overview'" />
+
     <!-- Шапка -->
     <header class="sticky top-0 z-10 px-4 pb-3 flex items-center justify-between" style="background: rgba(17,17,17,0.9); backdrop-filter: blur(20px); border-bottom: 1px solid var(--border); padding-top: calc(env(safe-area-inset-top, 0px) + 12px)">
       <div class="flex items-center gap-3">
@@ -140,8 +143,7 @@
 
       <!-- Вкладка: Бюджет -->
       <template v-if="activeTab === 'budget'">
-        <BudgetLock v-if="budgetLocked" @unlocked="budgetLocked = false" />
-        <BudgetDashboard v-else />
+        <BudgetDashboard v-if="!budgetLocked" />
       </template>
 
       <!-- Ошибка -->
@@ -263,7 +265,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { usePaymentsStore } from '../stores/payments'
 import PaymentForm from '../components/PaymentForm.vue'
 import StatsTable from '../components/StatsTable.vue'
@@ -278,8 +280,9 @@ const store = usePaymentsStore()
 const budgetStore = useBudgetStore()
 const activeTab = ref('overview')
 
-// Перепоказывать BudgetLock при возврате из фона > 30 мин
+// Перепоказывать BudgetLock при возврате из фона > 30 мин или после logout
 const budgetLocked = ref(!budgetStore.isAuthenticated)
+watch(() => budgetStore.isAuthenticated, (val) => { if (!val) budgetLocked.value = true })
 let budgetHiddenAt = 0
 document.addEventListener('visibilitychange', () => {
   if (document.hidden) {

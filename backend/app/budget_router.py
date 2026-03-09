@@ -97,6 +97,15 @@ async def new_period(user_id: str, data: PeriodCreate, current: str = Depends(_r
     return await budget_crud.create_period(user_id, data.start_date)
 
 
+@router.delete("/{user_id}/periods/{period_id}", response_model=PeriodOut | None)
+async def remove_period(user_id: str, period_id: str, current: str = Depends(_require_token)):
+    _check_access(current, user_id)
+    result = await budget_crud.delete_period(user_id, period_id)
+    if result is None:
+        raise HTTPException(404, "Period not found")
+    return result
+
+
 # ── Balances ──────────────────────────────────────────────────────────────────
 
 @router.get("/{user_id}/periods/{period_id}/balances", response_model=list[BalanceOut])

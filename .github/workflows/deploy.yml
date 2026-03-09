@@ -47,6 +47,8 @@ jobs:
           VITE_API_URL: ${{ secrets.VITE_API_URL }}
           VITE_PIN_HASH: ${{ secrets.VITE_PIN_HASH }}
           VITE_API_KEY: ${{ secrets.VITE_API_KEY }}
+          VITE_BUDGET_USER1_NAME: ${{ secrets.VITE_BUDGET_USER1_NAME }}
+          VITE_BUDGET_USER2_NAME: ${{ secrets.VITE_BUDGET_USER2_NAME }}
         run: npm run build
 
       - name: 📤 Upload artifact

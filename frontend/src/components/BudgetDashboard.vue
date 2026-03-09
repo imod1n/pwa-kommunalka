@@ -61,7 +61,16 @@
             class="bd-new-period-btn"
             @click="openNewPeriod"
           >
-            + Новый период
+            <span class="mdi mdi-new-box"></span>
+          </button>
+
+          <button
+            v-if="store.isViewingActive && store.periods.length > 1"
+            class="bd-del-period-btn"
+            @click="confirmDeletePeriod"
+            title="Удалить текущий период"
+          >
+            <span class="mdi mdi-delete-empty-outline"></span>
           </button>
         </div>
 
@@ -80,11 +89,18 @@
               <span class="bd-meta-val" style="color: #30d158">+{{ fmt(store.totalIncome) }}</span>
             </div>
             <div class="bd-hero-row">
-              <span class="bd-meta-key">Расходы ~</span>
+              <span class="bd-meta-key">Расходы</span>
               <span
                 class="bd-meta-val"
                 :style="{ color: store.totalExpenses > 0 ? '#ff453a' : '#30d158' }"
               >{{ store.totalExpenses > 0 ? '-' : '' }}{{ fmt(Math.abs(store.totalExpenses)) }}</span>
+            </div>
+            <div class="bd-hero-row">
+              <span class="bd-meta-key">Остаток за период</span>
+              <span
+                class="bd-meta-val"
+                :style="{ color: store.totalIncome - store.totalExpenses >= 0 ? '#30d158' : '#ff453a' }"
+              >{{ store.totalIncome - store.totalExpenses >= 0 ? '+' : '' }}{{ fmt(store.totalIncome - store.totalExpenses) }}</span>
             </div>
           </div>
         </div>
@@ -107,30 +123,48 @@
           </div>
 
           <div
-            v-for="acc in store.accountsWithBalances"
+            v-for="(acc, idx) in store.accountsWithBalances"
             :key="acc.id"
             class="bd-account-card"
+            :class="{
+              'bd-drag-over': dragOverIdx === idx,
+              'bd-dragging':  draggingIdx === idx,
+            }"
+            :draggable="store.isViewingActive && store.accounts.length >= 2"
+            :data-acc-idx="idx"
             @click="store.isViewingActive && openBalanceSheet(acc)"
             :style="{ cursor: store.isViewingActive ? 'pointer' : 'default' }"
+            @dragstart="onDragStart($event, idx)"
+            @dragover.prevent="onDragOver(idx)"
+            @dragleave="onDragLeave"
+            @drop.prevent="onDrop"
+            @dragend="onDragEnd"
+            @touchstart.passive="onTouchStart($event, idx)"
+            @touchmove.prevent="onTouchMove"
+            @touchend="onTouchEnd"
           >
-            <div class="bd-acc-main">
-              <span class="bd-acc-icon">{{ typeMeta(acc.type).icon }}</span>
-              <span class="bd-acc-name">{{ acc.name }}</span>
-              <button
-                v-if="store.isViewingActive && store.accounts.length >= 2"
-                class="bd-transfer-btn"
-                @click.stop="openTransfer(acc.id)"
-                title="Перевод с этого счёта"
-              >→</button>
+            <span
+              v-if="store.isViewingActive && store.accounts.length >= 2"
+              class="bd-drag-handle"
+              @click.stop
+            >⠿</span>
+            <div class="bd-acc-content">
+              <div class="bd-acc-main">
+                <span class="bd-acc-icon">{{ typeMeta(acc.type).icon }}</span>
+                <span class="bd-acc-name">{{ acc.name }}</span>
+              </div>
+              <div class="bd-acc-balances">
+                <span class="bd-bal-start">{{ fmt(acc.balance_start) }}</span>
+                <span class="bd-bal-arrow">→</span>
+                <span class="bd-bal-current">{{ fmt(acc.balance_current) }}</span>
+              </div>
             </div>
-            <div class="bd-acc-balances">
-              <span class="bd-bal-start">{{ fmt(acc.balance_start) }}</span>
-              <span class="bd-bal-arrow">→</span>
-              <span class="bd-bal-current">{{ fmt(acc.balance_current) }}</span>
-              <span class="bd-bal-delta" :style="{ color: deltaColor(acc.delta) }">
-                ({{ fmtDelta(acc.delta) }})
-              </span>
-            </div>
+            <button
+              v-if="store.isViewingActive && store.accounts.length >= 2"
+              class="bd-transfer-btn"
+              @click.stop="openTransfer(acc.id)"
+              title="Перевод с этого счёта"
+            ><span class="mdi mdi-swap-horizontal"></span></button>
           </div>
         </div>
 
@@ -154,16 +188,19 @@
           <div v-for="inc in store.income" :key="inc.id" class="bd-list-row">
             <div class="bd-row-left">
               <span class="bd-row-date">{{ fmtDate(inc.date) }}</span>
-              <span class="bd-row-label">{{ inc.category }}</span>
+              <span class="bd-row-label">
+                {{ inc.category }}
+                <span v-if="inc.category === 'Аванс'" class="bd-advance-badge">→ след. период</span>
+              </span>
               <span v-if="inc.note" class="bd-row-note">{{ inc.note }}</span>
             </div>
             <div class="bd-row-right">
-              <span class="bd-row-amount" style="color: #30d158">+{{ fmt(inc.amount) }}</span>
+              <span class="bd-row-amount" :style="{ color: inc.category === 'Аванс' ? '#ff9f0a' : '#30d158' }">+{{ fmt(inc.amount) }}</span>
               <button
                 v-if="store.isViewingActive"
                 class="bd-del-btn"
                 @click="confirmDeleteIncome(inc.id)"
-              >🗑</button>
+              ><span class="mdi mdi-delete-empty-outline"></span></button>
             </div>
           </div>
         </div>
@@ -200,7 +237,7 @@
                 v-if="store.isViewingActive"
                 class="bd-del-btn"
                 @click="confirmDeleteTransfer(t.id)"
-              >🗑</button>
+              ><span class="mdi mdi-delete-empty-outline"></span></button>
             </div>
           </div>
         </div>
@@ -366,13 +403,17 @@ const store = useBudgetStore()
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
 const TYPE_META = {
-  card:    { icon: '💳', label: 'Карта' },
+  debit:   { icon: '💳', label: 'Дебетовая карта' },
+  credit:  { icon: '💸', label: 'Кредитная карта' },
+  savings: { icon: '🏦', label: 'Накопительный' },
   cash:    { icon: '💵', label: 'Наличные' },
-  savings: { icon: '🏦', label: 'Накопления' },
+  foreign: { icon: '💱', label: 'Иностранный' },
+  invest:  { icon: '📈', label: 'Инвестиции' },
+  deposit: { icon: '🏛️', label: 'Вклад' },
   other:   { icon: '📂', label: 'Прочее' },
 }
 const ACCOUNT_TYPES = Object.entries(TYPE_META).map(([type, m]) => ({ type, ...m }))
-const INCOME_CATS   = ['Зарплата', 'Фриланс', 'Дивиденды', 'Аренда', 'Перевод', 'Прочее']
+const INCOME_CATS   = ['Зарплата', 'Аванс', 'Проценты', 'Кэшбек', 'Прочее']
 
 const typeMeta = type => TYPE_META[type] ?? { icon: '💰', label: 'Прочее' }
 
@@ -412,6 +453,53 @@ async function navigate(dir) {
   const nextIdx = periodIdx.value + dir
   if (nextIdx < 0 || nextIdx >= store.periods.length) return
   await store.switchPeriod(store.periods[nextIdx])
+}
+
+// ── Drag & drop reorder ───────────────────────────────────────────────────────
+
+const draggingIdx = ref(null)
+const dragOverIdx = ref(null)
+let touchStartIdx = null
+let touchStartY   = 0
+
+function _applyReorder(fromIdx, toIdx) {
+  if (fromIdx === toIdx || fromIdx === null || toIdx === null) return
+  const ids = store.accountsWithBalances.map(a => a.id)
+  const [moved] = ids.splice(fromIdx, 1)
+  ids.splice(toIdx, 0, moved)
+  store.reorderAccounts(ids)
+}
+
+// HTML5 DnD (desktop)
+function onDragStart(e, idx) {
+  draggingIdx.value = idx
+  e.dataTransfer.effectAllowed = 'move'
+}
+function onDragOver(idx) { dragOverIdx.value = idx }
+function onDragLeave()   { dragOverIdx.value = null }
+function onDrop()        { _applyReorder(draggingIdx.value, dragOverIdx.value) }
+function onDragEnd()     { draggingIdx.value = null; dragOverIdx.value = null }
+
+// Touch (iOS PWA)
+function onTouchStart(e, idx) {
+  touchStartIdx = idx
+  touchStartY   = e.touches[0].clientY
+  dragOverIdx.value = idx
+}
+function onTouchMove(e) {
+  const y   = e.touches[0].clientY
+  const els = document.elementsFromPoint(e.touches[0].clientX, y)
+  const card = els.find(el => el.closest?.('[data-acc-idx]'))
+  if (card) {
+    const idx = parseInt(card.closest('[data-acc-idx]').dataset.accIdx)
+    if (!isNaN(idx)) dragOverIdx.value = idx
+  }
+}
+function onTouchEnd() {
+  _applyReorder(touchStartIdx, dragOverIdx.value)
+  touchStartIdx = null
+  draggingIdx.value = null
+  dragOverIdx.value = null
 }
 
 // ── Balance sheet ─────────────────────────────────────────────────────────────
@@ -455,11 +543,11 @@ async function submitNewPeriod() {
 const showAddAccount = ref(false)
 const accountSaving  = ref(false)
 const newAccName     = ref('')
-const newAccType     = ref('card')
+const newAccType     = ref('debit')
 
 function openAddAccount() {
   newAccName.value = ''
-  newAccType.value = 'card'
+  newAccType.value = 'debit'
   showAddAccount.value = true
 }
 
@@ -517,6 +605,13 @@ async function confirmDeleteIncome(id) {
 async function confirmDeleteTransfer(id) {
   if (!confirm('Удалить перевод? Балансы счетов будут восстановлены.')) return
   await store.removeTransferEntry(id)
+}
+
+// ── Delete current period ─────────────────────────────────────────────────────
+
+async function confirmDeletePeriod() {
+  if (!confirm('Удалить текущий период? Все данные периода (балансы, доходы, переводы) будут удалены безвозвратно.')) return
+  await store.deleteCurrentPeriod()
 }
 
 // ── Init ──────────────────────────────────────────────────────────────────────
@@ -606,17 +701,29 @@ onMounted(() => store.init())
   font-size: 14px; font-weight: 600; color: var(--text-primary);
 }
 .bd-new-period-btn {
-  font-size: 12px; font-weight: 600;
+  font-size: 18px;
   color: var(--accent-green);
   background: rgba(48,209,88,0.1);
   border: 1px solid rgba(48,209,88,0.25);
-  border-radius: 8px; padding: 4px 10px; cursor: pointer;
+  border-radius: 8px; padding: 4px 7px; cursor: pointer;
   transition: background .15s;
-  white-space: nowrap;
   flex-shrink: 0;
-  font-family: inherit;
+  display: flex; align-items: center; justify-content: center;
 }
 .bd-new-period-btn:hover { background: rgba(48,209,88,0.18); }
+
+.bd-del-period-btn {
+  font-size: 16px;
+  color: var(--text-secondary);
+  background: none;
+  border: none;
+  padding: 4px 2px;
+  cursor: pointer;
+  display: flex; align-items: center;
+  transition: color .15s;
+  flex-shrink: 0;
+}
+.bd-del-period-btn:hover { color: #ff453a; }
 
 /* Hero card */
 .bd-hero {
@@ -664,6 +771,7 @@ onMounted(() => store.init())
 
 /* Account card */
 .bd-account-card {
+  display: flex; align-items: center; gap: 10px;
   padding: 10px 0;
   border-bottom: 1px solid var(--border);
   transition: opacity .12s;
@@ -671,9 +779,25 @@ onMounted(() => store.init())
 .bd-account-card:last-child { border-bottom: none; padding-bottom: 0; }
 .bd-account-card:first-of-type { padding-top: 0; }
 
+.bd-acc-content {
+  flex: 1; min-width: 0;
+  display: flex; flex-direction: column; gap: 5px;
+}
+
 .bd-acc-main {
   display: flex; align-items: center; gap: 10px;
-  margin-bottom: 5px;
+}
+.bd-drag-handle {
+  font-size: 18px; color: var(--text-secondary);
+  cursor: grab; padding: 0 4px; flex-shrink: 0;
+  touch-action: none;
+  user-select: none;
+}
+.bd-drag-handle:active { cursor: grabbing; }
+.bd-account-card.bd-dragging  { opacity: 0.4; }
+.bd-account-card.bd-drag-over {
+  border-top: 2px solid var(--accent-green);
+  margin-top: -2px;
 }
 .bd-acc-icon { font-size: 18px; flex-shrink: 0; }
 .bd-acc-name { flex: 1; font-size: 15px; font-weight: 600; color: var(--text-primary); }
@@ -689,7 +813,7 @@ onMounted(() => store.init())
 
 .bd-acc-balances {
   display: flex; align-items: center; gap: 6px;
-  padding-left: 28px;
+  padding-left: 28px; /* align under name (icon 18px + gap 10px) */
   font-size: 13px;
   font-variant-numeric: tabular-nums;
 }
@@ -700,7 +824,7 @@ onMounted(() => store.init())
 
 /* Income / transfer rows */
 .bd-list-row {
-  display: flex; align-items: flex-start; justify-content: space-between; gap: 10px;
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
   padding: 8px 0;
   border-bottom: 1px solid var(--border);
 }
@@ -709,6 +833,15 @@ onMounted(() => store.init())
 .bd-row-date  { font-size: 11px; color: var(--text-secondary); }
 .bd-row-label { font-size: 14px; color: var(--text-primary); font-weight: 500; }
 .bd-row-note  { font-size: 12px; color: var(--text-secondary); }
+.bd-advance-badge {
+  font-size: 10px; font-weight: 600;
+  color: #ff9f0a;
+  background: rgba(255,159,10,0.12);
+  border: 1px solid rgba(255,159,10,0.3);
+  border-radius: 5px; padding: 1px 5px;
+  margin-left: 5px; vertical-align: middle;
+  white-space: nowrap;
+}
 .bd-row-right { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
 .bd-row-amount { font-size: 15px; font-weight: 700; font-variant-numeric: tabular-nums; }
 .bd-del-btn {
@@ -810,6 +943,9 @@ onMounted(() => store.init())
 /* Type grid */
 .bd-type-grid {
   display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px;
+}
+@media (min-width: 400px) {
+  .bd-type-grid { grid-template-columns: repeat(4, 1fr); }
 }
 .bd-type-btn {
   display: flex; align-items: center; gap: 10px;

@@ -114,9 +114,7 @@
                     title="Удалить"
                     @click.stop="confirmDelete(row)"
                   >
-                    <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                      <path d="M2.5 4H11.5M5 4V2.5H9V4M5.5 6.5V10M8.5 6.5V10M3.5 4L4.5 11.5H9.5L10.5 4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
-                    </svg>
+                    <span class="mdi mdi-delete-empty-outline"></span>
                   </button>
                 </div>
               </div>

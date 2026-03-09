@@ -35,7 +35,9 @@ export const useBudgetStore = defineStore('budget', () => {
 
   const totalStart   = computed(() => accountsWithBalances.value.reduce((s, a) => s + a.balance_start,   0))
   const totalCurrent = computed(() => accountsWithBalances.value.reduce((s, a) => s + a.balance_current, 0))
-  const totalIncome  = computed(() => income.value.reduce((s, i) => s + i.amount, 0))
+  const totalAdvances = computed(() => income.value.filter(i => i.category === 'Аванс').reduce((s, i) => s + i.amount, 0))
+  const totalIncome   = computed(() => income.value.filter(i => i.category !== 'Аванс').reduce((s, i) => s + i.amount, 0))
+  // Аванс физически на счетах (входит в totalCurrent) и не является доходом периода — просто игнорируем его
   const totalExpenses = computed(() => totalStart.value + totalIncome.value - totalCurrent.value)
 
   const activePeriod = computed(() => periods.value.find(p => p.is_active) ?? null)
@@ -132,15 +134,42 @@ export const useBudgetStore = defineStore('budget', () => {
     balances.value  = balances.value.filter(b => b.account_id !== id)
   }
 
+  async function reorderAccounts(orderedIds) {
+    // Optimistic update
+    accounts.value = orderedIds.map((id, i) => {
+      const acc = accounts.value.find(a => a.id === id)
+      return { ...acc, sort_order: i }
+    })
+    // Persist each changed sort_order
+    await Promise.all(
+      orderedIds.map((id, i) => api.updateAccount(userId.value, id, { sort_order: i }))
+    )
+  }
+
   // ── Period actions ─────────────────────────────────────────────────────────
   async function startNewPeriod(startDate) {
     const period = await api.createPeriod(userId.value, startDate)
-    // Mark previous active as inactive
-    periods.value = periods.value.map(p => p.is_active ? { ...p, is_active: false } : p)
+    // Mark previous active as inactive, set end_date = startDate - 1 day (mirrors backend logic)
+    const endDt = new Date(startDate)
+    endDt.setDate(endDt.getDate() - 1)
+    const endDate = endDt.toISOString().slice(0, 10)
+    periods.value = periods.value.map(p => p.is_active ? { ...p, is_active: false, end_date: endDate } : p)
     periods.value.unshift(period)
     currentPeriod.value = period
     await _fetchPeriodData(period.id)
+
     return period
+  }
+
+  async function deleteCurrentPeriod() {
+    if (!activePeriod.value) return
+    const restored = await api.deletePeriod(userId.value, activePeriod.value.id)
+    // Remove deleted period from list, mark restored as active
+    periods.value = periods.value
+      .filter(p => p.id !== activePeriod.value?.id)
+      .map(p => p.id === restored.id ? restored : p)
+    currentPeriod.value = restored
+    await _fetchPeriodData(restored.id)
   }
 
   // ── Balance actions ────────────────────────────────────────────────────────
@@ -192,11 +221,11 @@ export const useBudgetStore = defineStore('budget', () => {
     loading, error,
     // computed
     accountsWithBalances, activePeriod, isViewingActive,
-    totalStart, totalCurrent, totalIncome, totalExpenses,
+    totalStart, totalCurrent, totalIncome, totalAdvances, totalExpenses,
     // actions
     login, logout, init, switchPeriod,
-    addAccount, removeAccount,
-    startNewPeriod,
+    addAccount, removeAccount, reorderAccounts,
+    startNewPeriod, deleteCurrentPeriod,
     updateBalance,
     addIncomeEntry, removeIncomeEntry,
     addTransferEntry, removeTransferEntry,

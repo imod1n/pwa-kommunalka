@@ -77,9 +77,13 @@ const emit = defineEmits(['close', 'saved'])
 const store = useBudgetStore()
 
 const TYPE_META = {
-  card:    { icon: '💳' },
-  cash:    { icon: '💵' },
+  debit:   { icon: '💳' },
+  credit:  { icon: '💸' },
   savings: { icon: '🏦' },
+  cash:    { icon: '💵' },
+  foreign: { icon: '💱' },
+  invest:  { icon: '📈' },
+  deposit: { icon: '🏛️' },
   other:   { icon: '📂' },
 }
 
