@@ -20,7 +20,7 @@ echo [3/3] Starting Vite with local API...
 start "Vite local" cmd /k "cd /d c:\PROJECTS\pwa-kommunalka\frontend && npm run dev:local"
 
 echo.
-echo Done! Open: http://localhost:5173/pwa-kommunalka/
+echo Done! Open: http://localhost:5173/my.space/
 echo API:        http://localhost:8000/health
 echo.
 pause

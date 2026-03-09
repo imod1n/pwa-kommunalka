@@ -8,7 +8,7 @@ export default defineConfig(({ mode }) => {
   const apiUrlPattern = new RegExp('^' + apiUrl.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '/api/')
 
   return {
-  base: '/pwa-kommunalka/',  // GitHub Pages repo name
+  base: '/my.space/',  // GitHub Pages repo name
   plugins: [
     vue(),
     VitePWA({
@@ -18,7 +18,7 @@ export default defineConfig(({ mode }) => {
         name: 'Домашний Счётчик',
         short_name: 'Домашний Счётчик',
         description: 'Учёт платежей на содержание',
-        start_url: '/pwa-kommunalka/',
+        start_url: '/my.space/',
         display: 'standalone',
         background_color: '#111111',
         theme_color: '#111111',
