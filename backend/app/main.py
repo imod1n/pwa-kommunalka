@@ -6,6 +6,8 @@ import os
 from .database import connect_db, close_db
 from .models import PaymentCreate, PaymentUpdate
 from . import crud
+from . import budget_crud
+from .budget_router import router as budget_router
 
 _API_KEY = os.getenv("API_KEY")
 
@@ -18,11 +20,13 @@ async def verify_api_key(x_api_key: str | None = Header(default=None)):
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     await connect_db()
+    await budget_crud.ensure_budget_indexes()
     yield
     await close_db()
 
 
 app = FastAPI(title="Kommunalka API", lifespan=lifespan, dependencies=[Depends(verify_api_key)])
+app.include_router(budget_router)
 
 app.add_middleware(
     CORSMiddleware,

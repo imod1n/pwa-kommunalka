@@ -10,8 +10,8 @@
         </div>
       </div>
 
-      <!-- Переключатель месяца -->
-      <div class="flex items-center gap-1 rounded-2xl px-1 py-1" style="background: var(--bg-card); border: 1px solid var(--border)">
+      <!-- Переключатель месяца (скрыт на вкладке Бюджет) -->
+      <div v-if="activeTab !== 'budget'" class="flex items-center gap-1 rounded-2xl px-1 py-1" style="background: var(--bg-card); border: 1px solid var(--border)">
         <button
           @click="store.changeMonth(-1)"
           class="w-8 h-8 rounded-xl flex items-center justify-center transition-all active:scale-90"
@@ -50,8 +50,8 @@
     <!-- Контент -->
     <main class="px-4 pt-4 space-y-4 pb-8">
 
-      <!-- ГЕРОЙ: итоговая сумма -->
-      <div class="card fade-in text-center py-6" style="position: relative">
+      <!-- ГЕРОЙ: итоговая сумма (скрыт на вкладке Бюджет) -->
+      <div v-if="activeTab !== 'budget'" class="card fade-in text-center py-6" style="position: relative">
         <!-- Кнопка калькулятора -->
         <button @click="openCalc" class="calc-icon-btn" title="Калькулятор периодов">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
@@ -81,6 +81,8 @@
         </div>
       </div>
 
+      <!-- Переключатель месяца скрыт на вкладке Бюджет -->
+
       <!-- Вкладки -->
       <div class="flex rounded-ios-sm overflow-hidden" style="background: var(--bg-card); border: 1px solid var(--border)">
         <!-- Обзор доски -->
@@ -109,6 +111,15 @@
         >
           📤 Данные
         </button>
+        <!-- Бюджет -->
+        <button
+          @click="activeTab = 'budget'"
+          class="flex-1 py-2.5 text-sm font-semibold transition-all"
+          :style="activeTab === 'budget' ? 'background: var(--bg-input); color: #fff' : 'color: var(--text-secondary)'"
+        >
+          <span class="sm:hidden text-lg leading-none">💰</span>
+          <span class="hidden sm:inline">💰 Бюджет</span>
+        </button>
       </div>
 
       <!-- Вкладка: Обзор -->
@@ -125,6 +136,12 @@
       <!-- Вкладка: Данные -->
       <template v-if="activeTab === 'data'">
         <ImportExport />
+      </template>
+
+      <!-- Вкладка: Бюджет -->
+      <template v-if="activeTab === 'budget'">
+        <BudgetLock v-if="budgetLocked" @unlocked="budgetLocked = false" />
+        <BudgetDashboard v-else />
       </template>
 
       <!-- Ошибка -->
@@ -252,9 +269,27 @@ import PaymentForm from '../components/PaymentForm.vue'
 import StatsTable from '../components/StatsTable.vue'
 import MonthlyChart from '../components/MonthlyChart.vue'
 import ImportExport from '../components/ImportExport.vue'
+// ── Бюджет: изолированный раздел ──────────────────────────────────────────
+import BudgetLock from '../components/BudgetLock.vue'
+import BudgetDashboard from '../components/BudgetDashboard.vue'
+import { useBudgetStore } from '../stores/budget'
 
 const store = usePaymentsStore()
+const budgetStore = useBudgetStore()
 const activeTab = ref('overview')
+
+// Перепоказывать BudgetLock при возврате из фона > 30 мин
+const budgetLocked = ref(!budgetStore.isAuthenticated)
+let budgetHiddenAt = 0
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) {
+    budgetHiddenAt = Date.now()
+  } else if (activeTab.value === 'budget' && budgetStore.isAuthenticated) {
+    if (Date.now() - budgetHiddenAt > 30 * 60 * 1000) {
+      budgetLocked.value = true
+    }
+  }
+})
 
 const tabs = [
   { key: 'overview', label: '📊 Обзор доски' },
