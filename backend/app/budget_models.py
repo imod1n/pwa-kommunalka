@@ -2,7 +2,7 @@ from pydantic import BaseModel, Field
 from typing import Optional, Literal
 
 
-AccountType = Literal["card", "cash", "savings", "other"]
+AccountType = Literal["debit", "credit", "savings", "cash", "foreign", "invest", "deposit", "card", "other"]
 
 
 # ── Auth ──────────────────────────────────────────────────────────────────────

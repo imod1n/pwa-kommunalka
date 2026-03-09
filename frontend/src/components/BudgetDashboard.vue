@@ -328,6 +328,8 @@
             </div>
           </div>
 
+          <div v-if="accountError" class="bd-sheet-error">{{ accountError }}</div>
+
           <button class="bd-btn-primary" :disabled="accountSaving || !newAccName.trim()" @click="submitNewAccount">
             {{ accountSaving ? 'Сохраняю...' : 'Добавить счёт' }}
           </button>
@@ -542,21 +544,26 @@ async function submitNewPeriod() {
 
 const showAddAccount = ref(false)
 const accountSaving  = ref(false)
+const accountError   = ref('')
 const newAccName     = ref('')
 const newAccType     = ref('debit')
 
 function openAddAccount() {
   newAccName.value = ''
   newAccType.value = 'debit'
+  accountError.value = ''
   showAddAccount.value = true
 }
 
 async function submitNewAccount() {
   if (!newAccName.value.trim()) return
   accountSaving.value = true
+  accountError.value = ''
   try {
     await store.addAccount({ name: newAccName.value.trim(), type: newAccType.value, sort_order: store.accounts.length })
     showAddAccount.value = false
+  } catch (e) {
+    accountError.value = e.response?.data?.detail || 'Ошибка соединения. Попробуйте ещё раз.'
   } finally {
     accountSaving.value = false
   }
@@ -957,6 +964,16 @@ onMounted(() => store.init())
 .bd-type-btn.active {
   background: rgba(10,132,255,0.15);
   border-color: #0a84ff; color: #fff;
+}
+
+/* Sheet error */
+.bd-sheet-error {
+  padding: 10px 14px;
+  background: rgba(255,69,58,0.1);
+  border: 1px solid var(--accent-red);
+  border-radius: 10px;
+  font-size: 13px; color: var(--accent-red);
+  text-align: center;
 }
 
 /* Income categories */

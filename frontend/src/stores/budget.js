@@ -118,11 +118,15 @@ export const useBudgetStore = defineStore('budget', () => {
 
     // Create a zero-balance record for the active period
     if (activePeriod.value) {
-      const bal = await api.setBalance(userId.value, activePeriod.value.id, {
-        account_id: acc.id, balance_start: 0, balance_current: 0,
-      })
-      if (currentPeriod.value?.id === activePeriod.value.id) {
-        balances.value.push(bal)
+      try {
+        const bal = await api.setBalance(userId.value, activePeriod.value.id, {
+          account_id: acc.id, balance_start: 0, balance_current: 0,
+        })
+        if (currentPeriod.value?.id === activePeriod.value.id) {
+          balances.value.push(bal)
+        }
+      } catch {
+        // Account already saved — balance will be created on next refresh
       }
     }
     return acc
