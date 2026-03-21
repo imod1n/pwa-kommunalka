@@ -1,5 +1,5 @@
 <template>
-  <div class="bl-overlay">
+  <div class="bl-overlay" ref="overlayEl">
     <div class="bl-glow" />
 
     <div class="bl-container">
@@ -70,9 +70,13 @@
 import { ref } from 'vue'
 import { useBudgetStore } from '../stores/budget'
 import PinKeypad from './PinKeypad.vue'
+import { usePreventZoom } from '../composables/usePreventZoom'
 
 const emit = defineEmits(['unlocked', 'back'])
 const store = useBudgetStore()
+
+const overlayEl = ref(null)
+usePreventZoom(overlayEl)
 
 const BUDGET_USERS = (() => {
   const users = []
@@ -126,6 +130,7 @@ async function onComplete(hash) {
   align-items: center;
   justify-content: center;
   overflow: hidden;
+  touch-action: none;
 }
 
 .bl-glow {

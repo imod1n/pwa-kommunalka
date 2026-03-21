@@ -154,6 +154,7 @@ defineExpose({ shake, reset })
   justify-content: center;
   transition: background 0.12s, transform 0.1s, border-color 0.12s;
   -webkit-tap-highlight-color: transparent;
+  touch-action: none;
   user-select: none;
   letter-spacing: -0.5px;
 }

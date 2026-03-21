@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "vite",
+    "dev:host": "vite --host",
     "dev:local": "cross-env VITE_API_URL=http://localhost:8000 vite",
     "build": "vite build",
     "preview": "vite preview"

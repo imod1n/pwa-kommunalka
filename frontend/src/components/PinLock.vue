@@ -1,5 +1,5 @@
 <template>
-  <div class="pin-overlay">
+  <div class="pin-overlay" ref="overlayEl">
 
     <!-- Фоновый градиент -->
     <div class="pin-bg-glow" />
@@ -28,11 +28,14 @@
 <script setup>
 import { ref } from 'vue'
 import PinKeypad from './PinKeypad.vue'
+import { usePreventZoom } from '../composables/usePreventZoom'
 
 const emit = defineEmits(['unlocked'])
 
 const PIN_HASH = import.meta.env.VITE_PIN_HASH
 const keypad = ref()
+const overlayEl = ref()
+usePreventZoom(overlayEl)
 
 async function onComplete(hash) {
   if (hash === PIN_HASH) {
@@ -53,6 +56,7 @@ async function onComplete(hash) {
   align-items: center;
   justify-content: center;
   overflow: hidden;
+  touch-action: none;
 }
 
 .pin-bg-glow {
