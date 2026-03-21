@@ -160,6 +160,11 @@
               </div>
             </div>
             <button
+              class="bd-edit-acc-btn"
+              @click.stop="openEditAccount(acc)"
+              title="Редактировать счёт"
+            ><span class="mdi mdi-pencil-outline"></span></button>
+            <button
               v-if="store.isViewingActive && store.accounts.length >= 2"
               class="bd-transfer-btn"
               @click.stop="openTransfer(acc.id)"
@@ -322,8 +327,8 @@
                 :class="{ active: newAccType === t.type }"
                 @click="newAccType = t.type"
               >
-                <span>{{ t.icon }}</span>
-                <span>{{ t.label }}</span>
+                <span class="bd-type-icon">{{ t.icon }}</span>
+                <span class="bd-type-label">{{ t.label }}</span>
               </button>
             </div>
           </div>
@@ -332,6 +337,48 @@
 
           <button class="bd-btn-primary" :disabled="accountSaving || !newAccName.trim()" @click="submitNewAccount">
             {{ accountSaving ? 'Сохраняю...' : 'Добавить счёт' }}
+          </button>
+        </div>
+      </div>
+    </Teleport>
+
+    <!-- ── Edit account sheet ─────────────────────────────────── -->
+    <Teleport to="body">
+      <div v-if="showEditAccount" class="bd-sheet-backdrop" @click.self="showEditAccount = false">
+        <div class="bd-sheet">
+          <div class="bd-sheet-header">
+            <span class="bd-sheet-title">Редактировать счёт</span>
+            <button class="bd-sheet-close" @click="showEditAccount = false">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+              </svg>
+            </button>
+          </div>
+
+          <div class="bd-field">
+            <label class="bd-label">Название</label>
+            <input v-model="editAccName" type="text" class="bd-text-input" placeholder="Карта Сбер" />
+          </div>
+
+          <div class="bd-field">
+            <label class="bd-label">Тип</label>
+            <div class="bd-type-grid">
+              <button
+                v-for="t in ACCOUNT_TYPES" :key="t.type"
+                class="bd-type-btn"
+                :class="{ active: editAccType === t.type }"
+                @click="editAccType = t.type"
+              >
+                <span class="bd-type-icon">{{ t.icon }}</span>
+                <span class="bd-type-label">{{ t.label }}</span>
+              </button>
+            </div>
+          </div>
+
+          <div v-if="editAccError" class="bd-sheet-error">{{ editAccError }}</div>
+
+          <button class="bd-btn-primary" :disabled="editAccSaving || !editAccName.trim()" @click="submitEditAccount">
+            {{ editAccSaving ? 'Сохраняю...' : 'Сохранить' }}
           </button>
         </div>
       </div>
@@ -558,6 +605,37 @@ async function submitNewAccount() {
     accountError.value = e.response?.data?.detail || 'Ошибка соединения. Попробуйте ещё раз.'
   } finally {
     accountSaving.value = false
+  }
+}
+
+// ── Edit account sheet ────────────────────────────────────────────────────────
+
+const showEditAccount = ref(false)
+const editAccSaving   = ref(false)
+const editAccError    = ref('')
+const editAccName     = ref('')
+const editAccType     = ref('debit')
+let   editingAccountId = null
+
+function openEditAccount(acc) {
+  editingAccountId   = acc.id
+  editAccName.value  = acc.name
+  editAccType.value  = acc.type
+  editAccError.value = ''
+  showEditAccount.value = true
+}
+
+async function submitEditAccount() {
+  if (!editAccName.value.trim() || !editingAccountId) return
+  editAccSaving.value = true
+  editAccError.value  = ''
+  try {
+    await store.editAccount(editingAccountId, { name: editAccName.value.trim(), type: editAccType.value })
+    showEditAccount.value = false
+  } catch (e) {
+    editAccError.value = e.response?.data?.detail || 'Ошибка соединения. Попробуйте ещё раз.'
+  } finally {
+    editAccSaving.value = false
   }
 }
 
@@ -800,6 +878,16 @@ onMounted(() => store.init())
 }
 .bd-acc-icon { font-size: 18px; flex-shrink: 0; }
 .bd-acc-name { flex: 1; font-size: 15px; font-weight: 600; color: var(--text-primary); }
+.bd-edit-acc-btn {
+  font-size: 15px; color: var(--text-secondary);
+  background: transparent; border: none;
+  border-radius: 8px; width: 28px; height: 28px;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; transition: color .12s;
+  flex-shrink: 0;
+}
+.bd-edit-acc-btn:hover { color: var(--text-primary); }
+
 .bd-transfer-btn {
   font-size: 16px; color: var(--text-secondary);
   background: var(--bg-input); border: 1px solid var(--border);
@@ -942,16 +1030,19 @@ onMounted(() => store.init())
 /* Type grid */
 .bd-type-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  grid-template-columns: repeat(4, 1fr);
   gap: 8px;
 }
 .bd-type-btn {
-  display: flex; align-items: center; gap: 10px;
-  padding: 12px 14px; border-radius: 10px;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 6px;
+  padding: 10px 4px; border-radius: 10px;
   background: var(--bg-input); border: 1px solid var(--border);
-  color: var(--text-secondary); font-size: 14px; font-weight: 500;
-  cursor: pointer; transition: all .12s; font-family: inherit;
+  color: var(--text-secondary); font-family: inherit;
+  cursor: pointer; transition: all .12s;
 }
+.bd-type-btn .bd-type-icon { font-size: 22px; line-height: 1; }
+.bd-type-btn .bd-type-label { font-size: 11px; font-weight: 500; line-height: 1.2; text-align: center; }
 .bd-type-btn.active {
   background: rgba(10,132,255,0.15);
   border-color: #0a84ff; color: #fff;

@@ -138,6 +138,12 @@ export const useBudgetStore = defineStore('budget', () => {
     return acc
   }
 
+  async function editAccount(id, data) {
+    const acc = await api.updateAccount(userId.value, id, data)
+    const idx = accounts.value.findIndex(a => a.id === id)
+    if (idx >= 0) accounts.value[idx] = acc
+  }
+
   async function removeAccount(id) {
     await api.deleteAccount(userId.value, id)
     accounts.value  = accounts.value.filter(a => a.id !== id)
@@ -244,7 +250,7 @@ export const useBudgetStore = defineStore('budget', () => {
     totalStart, totalCurrent, totalIncome, totalExpenses,
     // actions
     login, logout, init, switchPeriod,
-    addAccount, removeAccount, reorderAccounts,
+    addAccount, editAccount, removeAccount, reorderAccounts,
     startNewPeriod, deleteCurrentPeriod,
     updateBalance, addAdvance,
     addIncomeEntry, removeIncomeEntry,
