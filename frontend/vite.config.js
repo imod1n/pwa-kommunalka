@@ -9,14 +9,18 @@ export default defineConfig(({ mode }) => {
 
   return {
   base: '/',
+  server: {
+    port: 5173,
+    strictPort: true,
+  },
   plugins: [
     vue(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['favicon.ico', 'icon-192.png', 'icon-512.png'],
+      includeAssets: ['apple-touch-icon.png', 'favicon-16.png', 'favicon-32.png', 'icon-48.png', 'icon-72.png', 'icon-96.png', 'icon-120.png', 'icon-152.png', 'icon-167.png', 'icon-192.png', 'icon-512.png'],
       manifest: {
-        name: 'Домашний Счётчик',
-        short_name: 'Домашний Счётчик',
+        name: 'Доска М',
+        short_name: 'Доска М',
         description: 'Учёт платежей на содержание',
         start_url: '/',
         display: 'standalone',
@@ -26,16 +30,70 @@ export default defineConfig(({ mode }) => {
         lang: 'ru',
         icons: [
           {
+            src: 'icon-512.png',
+            sizes: '512x512',
+            type: 'image/png',
+            purpose: 'any maskable'
+          },
+          {
             src: 'icon-192.png',
             sizes: '192x192',
             type: 'image/png',
             purpose: 'any maskable'
           },
           {
-            src: 'icon-512.png',
-            sizes: '512x512',
+            src: 'apple-touch-icon.png',
+            sizes: '180x180',
             type: 'image/png',
-            purpose: 'any maskable'
+            purpose: 'any'
+          },
+          {
+            src: 'icon-96.png',
+            sizes: '96x96',
+            type: 'image/png',
+            purpose: 'any'
+          },
+          {
+            src: 'icon-72.png',
+            sizes: '72x72',
+            type: 'image/png',
+            purpose: 'any'
+          },
+          {
+            src: 'icon-48.png',
+            sizes: '48x48',
+            type: 'image/png',
+            purpose: 'any'
+          },
+          {
+            src: 'icon-167.png',
+            sizes: '167x167',
+            type: 'image/png',
+            purpose: 'any'
+          },
+          {
+            src: 'icon-152.png',
+            sizes: '152x152',
+            type: 'image/png',
+            purpose: 'any'
+          },
+          {
+            src: 'icon-120.png',
+            sizes: '120x120',
+            type: 'image/png',
+            purpose: 'any'
+          },
+          {
+            src: 'favicon-32.png',
+            sizes: '32x32',
+            type: 'image/png',
+            purpose: 'any'
+          },
+          {
+            src: 'favicon-16.png',
+            sizes: '16x16',
+            type: 'image/png',
+            purpose: 'any'
           }
         ]
       },

@@ -28,7 +28,7 @@
         </button>
 
         <button
-          @click="store.currentPeriod = store.todayPeriod(); store.fetchStats()"
+          @click="store.currentPeriod = store.todayPeriod(); store.fetchStats(); store.fetchHistory(); store.fetchHistoryFull()"
           class="text-sm font-semibold px-3 transition-opacity active:opacity-60"
           style="color: #fff; min-width: 110px; text-align: center; letter-spacing: -0.2px; background: none; border: none; cursor: pointer; font-family: inherit"
           title="Вернуться к текущему месяцу"

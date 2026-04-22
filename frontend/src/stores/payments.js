@@ -91,20 +91,17 @@ export const usePaymentsStore = defineStore('payments', () => {
   async function addPayment(data) {
     // data: { category, object_name, amount, date, period, note }
     await api.createPayment(data)
-    await fetchStats()
-    await fetchPayments()
+    await Promise.all([fetchStats(), fetchPayments(), fetchHistory(), fetchHistoryFull()])
   }
 
   async function updatePayment(id, data) {
     await api.updatePayment(id, data)
-    await fetchStats()
-    await fetchPayments()
+    await Promise.all([fetchStats(), fetchPayments(), fetchHistory(), fetchHistoryFull()])
   }
 
   async function deletePayment(id) {
     await api.deletePayment(id)
-    await fetchStats()
-    await fetchPayments()
+    await Promise.all([fetchStats(), fetchPayments(), fetchHistory(), fetchHistoryFull()])
   }
 
   // ── init ───────────────────────────────────────────────────
